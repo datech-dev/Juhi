@@ -11,6 +11,15 @@ class ConversationCreate(BaseModel):
     conversation_type: str = "chat"
 
 
+class StoryConversationCreate(BaseModel):
+    companion_profile_id: uuid.UUID | None = None
+    title: str | None = None
+    scenario_key: str = "cafe_rain"  # cafe_rain, stargazing, mystery_bookstore, sci_fi
+    scenario_prompt: str | None = None
+    character_role: str | None = None
+
+
+
 class ConversationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

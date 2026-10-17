@@ -202,6 +202,73 @@ class JuhiApiClient {
     _handleResponse(response);
   }
 
+  Future<Map<String, dynamic>> recordConsent({
+    required String purpose,
+    String decision = 'granted',
+    String noticeVersion = 'v1.0',
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/users/me/consent'),
+      headers: _buildHeaders(),
+      body: jsonEncode({
+        'purpose': purpose,
+        'decision': decision,
+        'notice_version': noticeVersion,
+      }),
+    );
+    return _handleResponse(response);
+  }
+
+  Future<Map<String, dynamic>> getCreditBalance() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/billing/balance'),
+      headers: _buildHeaders(),
+    );
+    return _handleResponse(response);
+  }
+
+  Future<List<dynamic>> getCreditLedger({int limit = 50}) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/billing/ledger?limit=$limit'),
+      headers: _buildHeaders(),
+    );
+    final data = _handleResponse(response);
+    return data is List ? data : [];
+  }
+
+  Future<Map<String, dynamic>> createStoryConversation({
+    required String scenarioKey,
+    String? title,
+    String? scenarioPrompt,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/conversations/story'),
+      headers: _buildHeaders(),
+      body: jsonEncode({
+        'scenario_key': scenarioKey,
+        if (title != null) 'title': title,
+        if (scenarioPrompt != null) 'scenario_prompt': scenarioPrompt,
+      }),
+    );
+    return _handleResponse(response);
+  }
+
+  Future<Map<String, dynamic>> exportUserData() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/users/me/export'),
+      headers: _buildHeaders(),
+    );
+    return _handleResponse(response);
+  }
+
+  Future<Map<String, dynamic>> deleteAccount() async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/users/me'),
+      headers: _buildHeaders(),
+    );
+    return _handleResponse(response);
+  }
+
   dynamic _handleResponse(http.Response response) {
     final dynamic decoded = jsonDecode(utf8.decode(response.bodyBytes));
     if (response.statusCode >= 200 && response.statusCode < 300) {

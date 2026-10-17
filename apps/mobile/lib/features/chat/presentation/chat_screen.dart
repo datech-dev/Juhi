@@ -5,8 +5,11 @@ import '../../../design_system/components/chat_bubble.dart';
 import '../../../design_system/components/chat_composer.dart';
 import '../../../design_system/components/companion_avatar.dart';
 import '../../../design_system/tokens/colors.dart';
+import '../../account/presentation/account_screen.dart';
 import '../../companion/presentation/companion_settings_screen.dart';
 import '../../memory/presentation/memory_screen.dart';
+import '../../onboarding/presentation/onboarding_dialog.dart';
+import '../../story/presentation/story_picker_sheet.dart';
 
 
 class MessageItem {
@@ -368,7 +371,30 @@ class _ChatScreenState extends State<ChatScreen> {
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert_rounded),
             onSelected: (value) async {
-              if (value == 'memory') {
+              if (value == 'story') {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  builder: (ctx) => StoryPickerSheet(
+                    apiClient: widget.apiClient,
+                    onStoryStarted: (conv) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ChatScreen(
+                            apiClient: widget.apiClient,
+                            initialConversationId: conv['id'] as String,
+                            companionName: _companionName,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              } else if (value == 'memory') {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -392,9 +418,28 @@ class _ChatScreenState extends State<ChatScreen> {
                     }
                   } catch (_) {}
                 }
+              } else if (value == 'account') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AccountScreen(apiClient: widget.apiClient),
+                  ),
+                );
+              } else if (value == 'disclosure') {
+                OnboardingDialog.showIfNeeded(context, widget.apiClient);
               }
             },
             itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'story',
+                child: Row(
+                  children: [
+                    Icon(Icons.auto_stories_rounded, size: 20, color: JuhiColors.lavender500),
+                    SizedBox(width: 12),
+                    Text("Story Mode & Roleplay"),
+                  ],
+                ),
+              ),
               const PopupMenuItem(
                 value: 'memory',
                 child: Row(
@@ -412,6 +457,26 @@ class _ChatScreenState extends State<ChatScreen> {
                     Icon(Icons.tune_rounded, size: 20, color: JuhiColors.lavender500),
                     SizedBox(width: 12),
                     Text("Customize Companion"),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'account',
+                child: Row(
+                  children: [
+                    Icon(Icons.account_balance_wallet_outlined, size: 20, color: JuhiColors.lavender500),
+                    SizedBox(width: 12),
+                    Text("Wallet & Privacy"),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'disclosure',
+                child: Row(
+                  children: [
+                    Icon(Icons.shield_outlined, size: 20, color: JuhiColors.lavender500),
+                    SizedBox(width: 12),
+                    Text("AI & Safety Disclosure"),
                   ],
                 ),
               ),

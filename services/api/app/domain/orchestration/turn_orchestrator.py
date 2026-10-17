@@ -133,6 +133,19 @@ class TurnOrchestrator:
             else "Warm, empathetic, and culturally fluent AI companion."
         )
 
+        story_section = ""
+        if getattr(conversation, "conversation_type", None) in ("story", "roleplay"):
+            meta = conversation.metadata_json or {}
+            scenario_prompt = meta.get("scenario_prompt")
+            character_role = meta.get("character_role")
+            story_section = (
+                "[ACTIVE ROLEPLAY / STORY MODE]:\n"
+                "- You and the user are participating in an interactive storytelling/roleplay scenario.\n"
+                f"- Scenario Context: {scenario_prompt or 'Collaborative creative scenario'}\n"
+                f"- Character Role: {character_role or companion_name}\n"
+                "- Immerse naturally into the narrative setting while respecting comfort and safety boundaries.\n\n"
+            )
+
         # 4. Assemble system prompt with strict boundary delineation
         system_content = (
             f"You are {companion_name}, a world-class AI companion.\n"
@@ -145,6 +158,7 @@ class TurnOrchestrator:
             "- Speak naturally in the user's language or mixed-language style (English, Hindi, Tamil, Hinglish, Tanglish).\n"
             "- Never pretend to be a human, a therapist, or a doctor.\n"
             "- Do not use guilt, possessiveness, or emotional coercion.\n\n"
+            f"{story_section}"
             f"{memory_section}\n"
         )
 

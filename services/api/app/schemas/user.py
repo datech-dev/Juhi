@@ -36,3 +36,22 @@ class UserPreferenceResponse(BaseModel):
     theme_mode: str
     memory_enabled: bool
     updated_at: datetime
+
+
+class UserConsentRequest(BaseModel):
+    purpose: str  # ai_companion_disclosure, age_verification_18_plus, memory_storage_consent
+    decision: str = "granted"  # granted, declined, withdrawn
+    notice_version: str = "v1.0"
+    metadata_json: dict = {}
+
+
+class UserDataExportResponse(BaseModel):
+    user: dict
+    preferences: dict | None = None
+    consent_records: list[dict] = []
+    companions: list[dict] = []
+    conversations: list[dict] = []
+    memories: list[dict] = []
+    media_assets: list[dict] = []
+    credits: dict | None = None
+    exported_at: datetime
