@@ -6,6 +6,7 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.errors import JuhiAPIException, NotFoundException
 from app.domain.models.billing import CreditAccount, CreditLedgerEntry
 from app.domain.models.media import CreditReservation, GenerationJob, MediaAsset
@@ -38,6 +39,8 @@ class MediaService:
         width: int = 1024,
         height: int = 1024,
     ) -> GenerationJob:
+        if not model or model in ("fluently-xl", "default"):
+            model = settings.VENICE_IMAGE_MODEL or "lustify-v7"
         # 1. Check idempotency
         stmt = select(GenerationJob).where(
             GenerationJob.user_id == user_id,
@@ -146,7 +149,9 @@ class MediaService:
         prompt = cfg.get("prompt", "Portrait of Juhi")
         width = cfg.get("width", 1024)
         height = cfg.get("height", 1024)
-        model = cfg.get("model", "lustify-v7")
+        model = cfg.get("model") or settings.VENICE_IMAGE_MODEL or "lustify-v7"
+        if model in ("fluently-xl", "default"):
+            model = settings.VENICE_IMAGE_MODEL or "lustify-v7"
 
         try:
             result = await self.image_provider.generate_image(

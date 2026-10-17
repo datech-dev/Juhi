@@ -96,7 +96,7 @@ class JuhiApiClient {
       body: jsonEncode({
         'prompt': prompt,
         if (conversationId != null) 'conversation_id': conversationId,
-        'model': model ?? 'fluently-xl',
+        'model': model ?? 'lustify-v7',
         'width': width ?? 1024,
         'height': height ?? 1024,
         if (idempotencyKey != null) 'idempotency_key': idempotencyKey,
