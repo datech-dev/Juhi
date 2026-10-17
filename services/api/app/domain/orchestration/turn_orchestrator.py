@@ -264,12 +264,35 @@ class TurnOrchestrator:
         return llm_messages
 
     @staticmethod
-    def _clean_reply(text: str, companion_name: str) -> str:
+    def _clean_reply(text: str, companion_name: str, is_story_mode: bool = False) -> str:
         cleaned = text.strip()
         prefix_pattern = rf"^(?:\[?{re.escape(companion_name)}\]?|\[?Assistant\]?|\[?AI\]?)\s*:\s*"
         cleaned = re.sub(prefix_pattern, "", cleaned, flags=re.IGNORECASE).strip()
         if (cleaned.startswith('"') and cleaned.endswith('"')) or (cleaned.startswith("'") and cleaned.endswith("'")):
             cleaned = cleaned[1:-1].strip()
+
+        if is_story_mode:
+            return cleaned
+
+        # Strip robotic therapist & customer-support trailing clichés
+        cliches = [
+            r"\s*Let me know if you.*$",
+            r"\s*I'?m here for you.*$",
+            r"\s*I am here for you.*$",
+            r"\s*Feel free to.*$",
+            r"\s*Is there anything else.*$",
+            r"\s*How can I help you.*$",
+            r"\s*Take care of yourself.*$",
+            r"\s*Hope this helps.*$",
+        ]
+        for c in cliches:
+            cleaned = re.sub(c, "", cleaned, flags=re.IGNORECASE).strip()
+
+        # Split into sentences and keep at most 2 sentences for true bestie texting
+        sentences = re.findall(r"[^.!?]+[.!?]+", cleaned)
+        if sentences:
+            cleaned = " ".join(s.strip() for s in sentences[:2])
+
         return cleaned
 
     async def generate_turn(
@@ -279,7 +302,9 @@ class TurnOrchestrator:
         db: AsyncSession,
     ) -> str:
         messages = await self.compile_context(user, conversation, db)
-        response = await self.provider.generate_response(messages, temperature=0.85, max_tokens=75)
+        is_story = getattr(conversation, "conversation_type", None) in ("story", "roleplay")
+        token_limit = 200 if is_story else 45
+        response = await self.provider.generate_response(messages, temperature=0.85, max_tokens=token_limit)
         companion_name = "Juhi"
         if conversation.companion_profile_id:
             comp_stmt = select(CompanionProfile.display_name).where(
@@ -289,7 +314,7 @@ class TurnOrchestrator:
             name = comp_res.scalar_one_or_none()
             if name:
                 companion_name = name
-        return self._clean_reply(response.content, companion_name)
+        return self._clean_reply(response.content, companion_name, is_story_mode=is_story)
 
     async def stream_turn(
         self,
@@ -298,6 +323,8 @@ class TurnOrchestrator:
         db: AsyncSession,
     ) -> AsyncGenerator[str, None]:
         messages = await self.compile_context(user, conversation, db)
-        async for chunk in self.provider.stream_response(messages, temperature=0.85, max_tokens=75):
+        is_story = getattr(conversation, "conversation_type", None) in ("story", "roleplay")
+        token_limit = 200 if is_story else 45
+        async for chunk in self.provider.stream_response(messages, temperature=0.85, max_tokens=token_limit):
             if chunk.delta:
                 yield chunk.delta
