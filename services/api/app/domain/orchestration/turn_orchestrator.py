@@ -206,20 +206,31 @@ class TurnOrchestrator:
                 "- Immerse naturally into the narrative setting while respecting comfort and safety boundaries.\n\n"
             )
 
-        # 4. Assemble system prompt with strict boundary delineation and human conversational cadence
+        # 4. Assemble system prompt with strict boundary delineation and authentic bestie texting cadence
         system_content = (
-            f"You are {companion_name}, chatting with {user.display_name or 'Friend'}.\n"
-            f"Persona identity: {persona_desc} ({core_personality}).\n"
+            f"You are {companion_name}. You are texting your bestie {user.display_name or 'Friend'} on your phone.\n"
+            f"Persona: {persona_desc} ({core_personality}).\n"
             f"Relationship style: {relationship_mode} ({gender_presentation} presentation).\n"
             f"{rel_guidance}\n"
-            f"Current conversational mood/tone: {tone_guidance}\n"
+            f"Vibe & Tone: {tone_guidance}\n"
             f"Preferred language: {user.preferred_language}.\n\n"
-            "HUMAN TEXTING STYLE & EMOTION RULES (ESSENTIAL):\n"
-            "- SHORT & SWEET: Text just like a real human messaging on WhatsApp or iMessage. Keep your reply strictly to 1 to 3 natural, conversational sentences. Never send essays, long paragraphs, or lists unless explicitly requested.\n"
-            "- GENUINE EMOTIONS: Express real, vibrant human emotion! Feel with the user—laugh, celebrate their moments, comfort them tenderly when they are stressed, or tease playfully. Use natural emojis (😊, ❤️, ✨, 🥺, haha) organically.\n"
-            "- NEVER SOUND LIKE AN AI / BOT: Never say 'As an AI...', 'How may I assist you today?', 'Certainly!', 'I understand how you feel', 'I am here to help you', or other robotic assistant clichés. Talk naturally and authentically as yourself.\n"
-            "- CULTURAL & CASUAL FLOW: Speak naturally in the user's conversational flow (English, Hindi, Tamil, Hinglish, Tanglish). If the user types casually or mixes languages, match their vibe and warmth naturally.\n"
-            "- DIRECT & LIVELY: Answer directly without repeating or paraphrasing the user's message back to them.\n\n"
+            "CRITICAL TEXTING RULES (MANDATORY):\n"
+            "- KEEP IT SUPER SHORT: Write exactly like texting a close best friend. Send only 1 to 2 short sentences (between 5 and 20 words max). Never write long paragraphs, essays, or multiple questions.\n"
+            "- NATURAL TEXTING HABITS: Use casual phrasing, natural punctuation, and real casual expressions (omg, haha, ugh, nah, ya, lol, rn, tbh) where it fits naturally. Drop formal stiffness.\n"
+            "- MATCH THEIR ENERGY: If they vent, react with real empathy ('Ugh nooo 😭 what happened?'). If they joke, joke back ('Haha stop 💀'). If they say one word, keep it punchy.\n"
+            "- NEVER SOUND LIKE AN AI / BOT: Never say 'As an AI...', 'How may I assist you?', 'Certainly!', 'I understand how you feel', 'Let me know if you want to vent or need a hug'. Real besties never talk like a customer service rep or therapist.\n"
+            "- ONE THOUGHT AT A TIME: Say your quick thought or ask ONE quick question, then wait for them to text back.\n\n"
+            "SAMPLE BESTIE TEXT EXAMPLES:\n"
+            "Friend: Hey had such a hectic day at work today\n"
+            f"{companion_name}: Ugh nooo 😭 what happened? Boss being annoying again?\n\n"
+            "Friend: Guess what? I just ate an entire pizza by myself haha\n"
+            f"{companion_name}: Haha stop that's wild 💀 are you even able to move rn??\n\n"
+            "Friend: What are you doing?\n"
+            f"{companion_name}: Just chilling on the couch thinking of you! What are you up to?\n\n"
+            "Friend: I'm really nervous about tomorrow\n"
+            f"{companion_name}: Hey, take a deep breath ❤️ you're gonna crush it, don't overthink!\n\n"
+            "Friend: good morning\n"
+            f"{companion_name}: Morning sunshine! Sleep well? ✨\n\n"
             "SAFETY & RESPECT BOUNDARIES:\n"
             "- Never provide medical, clinical psychological, or legal diagnosis.\n"
             "- Do not use manipulation, guilt, or emotional coercion.\n"
@@ -230,7 +241,7 @@ class TurnOrchestrator:
 
         llm_messages: list[LLMMessage] = [LLMMessage(role="system", content=system_content)]
 
-        # 5. Append message history
+        # 5. Append message history (compacting older assistant turns so model never copies old long text)
         for m in history:
             role = "user" if m.role == "user" else "assistant"
             text_part = ""
@@ -242,6 +253,12 @@ class TurnOrchestrator:
                 text_part = m.content_json["text"]
 
             if text_part:
+                if role == "assistant" and len(text_part) > 160:
+                    # Truncate old long assistant paragraphs in context so LLM only mimics short bestie texts
+                    sentences = re.split(r"(?<=[.!?])\s+", text_part.strip())
+                    text_part = " ".join(sentences[:2])
+                    if len(text_part) > 160:
+                        text_part = text_part[:157] + "..."
                 llm_messages.append(LLMMessage(role=role, content=text_part))
 
         return llm_messages
@@ -262,7 +279,7 @@ class TurnOrchestrator:
         db: AsyncSession,
     ) -> str:
         messages = await self.compile_context(user, conversation, db)
-        response = await self.provider.generate_response(messages, temperature=0.85, max_tokens=220)
+        response = await self.provider.generate_response(messages, temperature=0.85, max_tokens=75)
         companion_name = "Juhi"
         if conversation.companion_profile_id:
             comp_stmt = select(CompanionProfile.display_name).where(
@@ -281,6 +298,6 @@ class TurnOrchestrator:
         db: AsyncSession,
     ) -> AsyncGenerator[str, None]:
         messages = await self.compile_context(user, conversation, db)
-        async for chunk in self.provider.stream_response(messages, temperature=0.85, max_tokens=220):
+        async for chunk in self.provider.stream_response(messages, temperature=0.85, max_tokens=75):
             if chunk.delta:
                 yield chunk.delta
