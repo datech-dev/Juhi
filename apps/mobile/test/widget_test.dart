@@ -65,4 +65,25 @@ void main() {
 
     expect(sentText, equals('Testing message'));
   });
+
+  testWidgets('ChatBubble displays image when imageBase64 is provided', (WidgetTester tester) async {
+    // 1x1 transparent png in base64
+    const mockB64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: ChatBubble(
+            text: 'Here is your photo!',
+            isUser: false,
+            time: '10:02 AM',
+            imageBase64: mockB64,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Here is your photo!'), findsOneWidget);
+    expect(find.byType(Image), findsOneWidget);
+  });
 }

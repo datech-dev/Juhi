@@ -2,18 +2,21 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import StaticPool
 
 import app.domain.models  # noqa: F401
+import app.infrastructure.database.session as session_module
 from app.infrastructure.database.base import Base
 from app.infrastructure.database.session import get_db
 from app.main import app as fastapi_app
 
-# Use in-memory SQLite for testing
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+# Use shared-cache in-memory SQLite for testing with StaticPool so all async sessions share the connection
+TEST_DATABASE_URL = "sqlite+aiosqlite:///file:testdb?mode=memory&cache=shared&uri=true"
 
 test_engine = create_async_engine(
     TEST_DATABASE_URL,
     connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
 )
 
 TestSessionLocal = async_sessionmaker(
@@ -23,6 +26,8 @@ TestSessionLocal = async_sessionmaker(
     autocommit=False,
     autoflush=False,
 )
+
+session_module.AsyncSessionLocal = TestSessionLocal
 
 
 @pytest_asyncio.fixture(scope="function")
