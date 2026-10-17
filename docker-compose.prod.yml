@@ -37,10 +37,8 @@ services:
     image: pgvector/pgvector:pg16
     container_name: juhi-postgres-prod
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-juhi_prod}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-juhi_secret_prod}
-      POSTGRES_DB: ${POSTGRES_DB:-juhi_prod}
+    env_file:
+      - .env.production
     volumes:
       - postgres_prod_data:/var/lib/postgresql/data
     healthcheck:

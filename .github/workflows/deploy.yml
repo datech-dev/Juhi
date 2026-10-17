@@ -72,13 +72,13 @@ jobs:
             echo "Pulling latest git changes..."
             git pull origin master || true
             echo "Building or pulling Docker images..."
-            docker compose -f docker-compose.prod.yml build
+            docker compose -f docker-compose.prod.yml --env-file .env.production build
             echo "Restarting services with zero downtime..."
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            docker compose -f docker-compose.prod.yml --env-file .env.production up -d --remove-orphans
             echo "Waiting for PostgreSQL and API readiness..."
-            sleep 5
+            sleep 8
             echo "Applying latest database migrations..."
-            docker compose -f docker-compose.prod.yml exec -T api alembic upgrade head
+            docker compose -f docker-compose.prod.yml --env-file .env.production exec -T api alembic upgrade head
             echo "Verifying health endpoint..."
             curl -f http://127.0.0.1:8090/api/v1/health || curl -f http://localhost:8090/api/v1/health
             echo "Juhi deployment successfully completed on VPS!"
