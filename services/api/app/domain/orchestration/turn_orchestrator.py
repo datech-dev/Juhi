@@ -294,7 +294,12 @@ class TurnOrchestrator:
         return llm_messages
 
     @staticmethod
-    def _clean_reply(text: str, companion_name: str, is_story_mode: bool = False) -> str:
+    def _clean_reply(
+        text: str,
+        companion_name: str,
+        is_story_mode: bool = False,
+        current_query: str | None = None,
+    ) -> str:
         cleaned = text.strip()
         # 1. Strip all XML/HTML tags like <Style>, <thought>, </Style>, etc.
         cleaned = re.sub(r"<[^>]+>", "", cleaned).strip()
@@ -333,10 +338,13 @@ class TurnOrchestrator:
         for c in cliches:
             cleaned = re.sub(c, "", cleaned, flags=re.IGNORECASE).strip()
 
-        # Split into sentences and keep at most 2 sentences for true bestie texting
-        sentences = re.findall(r"[^.!?]+[.!?]+", cleaned)
-        if sentences:
-            cleaned = " ".join(s.strip() for s in sentences[:2])
+        # Split into sentences without truncating trailing words/emojis
+        splits = re.split(r"(?<=[.!?])\s+", cleaned)
+        if splits:
+            cleaned = " ".join(s.strip() for s in splits[:2])
+
+        if current_query and cleaned.strip().lower() == current_query.strip().lower():
+            cleaned = "Wait, are you serious right now?! 🤨"
 
         return cleaned
 
@@ -349,7 +357,7 @@ class TurnOrchestrator:
     ) -> str:
         messages = await self.compile_context(user, conversation, db, current_query=current_query)
         is_story = getattr(conversation, "conversation_type", None) in ("story", "roleplay")
-        token_limit = 200 if is_story else 45
+        token_limit = 200 if is_story else 85
         response = await self.provider.generate_response(messages, temperature=0.85, max_tokens=token_limit)
         companion_name = "Juhi"
         if conversation.companion_profile_id:
@@ -360,7 +368,7 @@ class TurnOrchestrator:
             name = comp_res.scalar_one_or_none()
             if name:
                 companion_name = name
-        return self._clean_reply(response.content, companion_name, is_story_mode=is_story)
+        return self._clean_reply(response.content, companion_name, is_story_mode=is_story, current_query=current_query)
 
     async def stream_turn(
         self,
@@ -370,7 +378,7 @@ class TurnOrchestrator:
     ) -> AsyncGenerator[str, None]:
         messages = await self.compile_context(user, conversation, db)
         is_story = getattr(conversation, "conversation_type", None) in ("story", "roleplay")
-        token_limit = 200 if is_story else 45
+        token_limit = 200 if is_story else 85
         async for chunk in self.provider.stream_response(messages, temperature=0.85, max_tokens=token_limit):
             if chunk.delta:
                 yield chunk.delta
