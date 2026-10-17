@@ -22,17 +22,20 @@ class Settings(BaseSettings):
         default="development_insecure_secret_key_minimum_32_chars_long_12345",
         min_length=32,
     )
-    ALLOWED_ORIGINS: list[str] = ["*"]
+    ALLOWED_ORIGINS: list[str] | str = ["*"]
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: Any) -> list[str]:
         if isinstance(v, str):
             if v.startswith("[") and v.endswith("]"):
-                return json.loads(v)
+                try:
+                    return json.loads(v)
+                except Exception:
+                    pass
             return [i.strip() for i in v.split(",") if i.strip()]
         elif isinstance(v, list):
-            return v
+            return [str(i) for i in v]
         return ["*"]
 
     # Database
