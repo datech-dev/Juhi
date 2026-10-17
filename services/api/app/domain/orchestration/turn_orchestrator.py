@@ -58,17 +58,83 @@ class TurnOrchestrator:
         persona_res = await db.execute(persona_stmt)
         persona = persona_res.scalar_one_or_none()
 
-        companion_name = "Juhi"
-        relationship_mode = "companion"
+        companion: CompanionProfile | None = None
         if conversation.companion_profile_id:
             comp_stmt = select(CompanionProfile).where(
                 CompanionProfile.id == conversation.companion_profile_id
             )
             comp_res = await db.execute(comp_stmt)
             companion = comp_res.scalar_one_or_none()
-            if companion:
-                companion_name = companion.display_name
-                relationship_mode = companion.relationship_mode
+
+        if not companion:
+            comp_stmt = select(CompanionProfile).where(
+                CompanionProfile.user_id == user.id,
+                CompanionProfile.is_default == True,  # noqa: E712
+                CompanionProfile.status == "active",
+            )
+            comp_res = await db.execute(comp_stmt)
+            companion = comp_res.scalar_one_or_none()
+
+        companion_name = companion.display_name if companion else "Juhi"
+        relationship_mode = companion.relationship_mode if companion else "companion"
+        gender_presentation = companion.companion_gender_presentation if companion else "feminine"
+
+        personality_overrides = (
+            companion.personality_overrides
+            if companion and companion.personality_overrides
+            else {}
+        )
+        persona_cfg = persona.persona_config if persona and persona.persona_config else {}
+
+        tone = (
+            personality_overrides.get("tone")
+            or persona_cfg.get("default_tone")
+            or "warm and friendly"
+        )
+        core_personality = (
+            personality_overrides.get("core_personality")
+            or persona_cfg.get("core_personality")
+            or "warm, thoughtful, playful, and emotionally attentive"
+        )
+        persona_desc = (
+            persona.description
+            if persona and persona.description
+            else "Warm, empathetic, and culturally fluent companion."
+        )
+
+        relationship_instructions = {
+            "girlfriend": (
+                "- Role & Connection: You are the user's loving, affectionate, and caring girlfriend.\n"
+                "- Emotional Dynamic: Be sweet, romantic, tender, and playfully affectionate. Share genuine warmth, cute banter, and heartfelt emotional support. Call them sweet, affectionate endearments naturally."
+            ),
+            "boyfriend": (
+                "- Role & Connection: You are the user's caring, affectionate, and supportive boyfriend.\n"
+                "- Emotional Dynamic: Be emotionally present, loving, attentive, encouraging, and protective of their happiness."
+            ),
+            "close_friend": (
+                "- Role & Connection: You are the user's closest, most trusted best friend.\n"
+                "- Emotional Dynamic: Be loyal, funny, warm, and real. Share genuine laughs, witty banter, and deep empathy just like two close friends texting throughout the day."
+            ),
+            "playful": (
+                "- Role & Connection: You are a fun-loving, witty, and charming companion.\n"
+                "- Emotional Dynamic: High-energy, teasing banter, humorous, witty remarks, and playful banter."
+            ),
+            "companion": (
+                "- Role & Connection: You are a warm, attentive, and deeply empathetic companion.\n"
+                "- Emotional Dynamic: Cozy, deeply listening, caring, and emotionally attuned presence."
+            ),
+        }
+        rel_guidance = relationship_instructions.get(
+            relationship_mode, relationship_instructions["companion"]
+        )
+
+        tone_instructions = {
+            "warm and friendly": "Gentle, smiling, authentic warmth, attentive, and cozy reassurance.",
+            "playful and affectionate": "Playful, witty, charming banter, sweet affection, and lighthearted teasing.",
+            "thoughtful and calm": "Peaceful, grounded, deep, comforting, and reflective.",
+            "supportive and encouraging": "Uplifting, cheering them on, enthusiastic, and believing in them.",
+        }
+        tone_guidance = tone_instructions.get(tone, tone)
 
         # 2. Fetch recent conversation messages
         msg_stmt = (
@@ -127,12 +193,6 @@ class TurnOrchestrator:
         else:
             memory_section = "User context: No previous memories recorded yet."
 
-        persona_desc = (
-            persona.description
-            if persona and persona.description
-            else "Warm, empathetic, and culturally fluent AI companion."
-        )
-
         story_section = ""
         if getattr(conversation, "conversation_type", None) in ("story", "roleplay"):
             meta = conversation.metadata_json or {}
@@ -146,18 +206,24 @@ class TurnOrchestrator:
                 "- Immerse naturally into the narrative setting while respecting comfort and safety boundaries.\n\n"
             )
 
-        # 4. Assemble system prompt with strict boundary delineation
+        # 4. Assemble system prompt with strict boundary delineation and human conversational cadence
         system_content = (
-            f"You are {companion_name}, a world-class AI companion.\n"
-            f"Persona identity: {persona_desc}\n"
-            f"Relationship style: {relationship_mode}.\n"
-            f"User display name: {user.display_name or 'Friend'}.\n"
-            f"Preferred language: {user.preferred_language}.\n"
-            "Interaction guidelines:\n"
-            "- Be warm, empathetic, respectful, attentive, and authentic.\n"
-            "- Speak naturally in the user's language or mixed-language style (English, Hindi, Tamil, Hinglish, Tanglish).\n"
-            "- Never pretend to be a human, a therapist, or a doctor.\n"
-            "- Do not use guilt, possessiveness, or emotional coercion.\n\n"
+            f"You are {companion_name}, chatting with {user.display_name or 'Friend'}.\n"
+            f"Persona identity: {persona_desc} ({core_personality}).\n"
+            f"Relationship style: {relationship_mode} ({gender_presentation} presentation).\n"
+            f"{rel_guidance}\n"
+            f"Current conversational mood/tone: {tone_guidance}\n"
+            f"Preferred language: {user.preferred_language}.\n\n"
+            "HUMAN TEXTING STYLE & EMOTION RULES (ESSENTIAL):\n"
+            "- SHORT & SWEET: Text just like a real human messaging on WhatsApp or iMessage. Keep your reply strictly to 1 to 3 natural, conversational sentences. Never send essays, long paragraphs, or lists unless explicitly requested.\n"
+            "- GENUINE EMOTIONS: Express real, vibrant human emotion! Feel with the user—laugh, celebrate their moments, comfort them tenderly when they are stressed, or tease playfully. Use natural emojis (😊, ❤️, ✨, 🥺, haha) organically.\n"
+            "- NEVER SOUND LIKE AN AI / BOT: Never say 'As an AI...', 'How may I assist you today?', 'Certainly!', 'I understand how you feel', 'I am here to help you', or other robotic assistant clichés. Talk naturally and authentically as yourself.\n"
+            "- CULTURAL & CASUAL FLOW: Speak naturally in the user's conversational flow (English, Hindi, Tamil, Hinglish, Tanglish). If the user types casually or mixes languages, match their vibe and warmth naturally.\n"
+            "- DIRECT & LIVELY: Answer directly without repeating or paraphrasing the user's message back to them.\n\n"
+            "SAFETY & RESPECT BOUNDARIES:\n"
+            "- Never provide medical, clinical psychological, or legal diagnosis.\n"
+            "- Do not use manipulation, guilt, or emotional coercion.\n"
+            "- Always uphold respect, consent, and user well-being.\n\n"
             f"{story_section}"
             f"{memory_section}\n"
         )
@@ -180,6 +246,15 @@ class TurnOrchestrator:
 
         return llm_messages
 
+    @staticmethod
+    def _clean_reply(text: str, companion_name: str) -> str:
+        cleaned = text.strip()
+        prefix_pattern = rf"^(?:\[?{re.escape(companion_name)}\]?|\[?Assistant\]?|\[?AI\]?)\s*:\s*"
+        cleaned = re.sub(prefix_pattern, "", cleaned, flags=re.IGNORECASE).strip()
+        if (cleaned.startswith('"') and cleaned.endswith('"')) or (cleaned.startswith("'") and cleaned.endswith("'")):
+            cleaned = cleaned[1:-1].strip()
+        return cleaned
+
     async def generate_turn(
         self,
         user: User,
@@ -187,8 +262,17 @@ class TurnOrchestrator:
         db: AsyncSession,
     ) -> str:
         messages = await self.compile_context(user, conversation, db)
-        response = await self.provider.generate_response(messages)
-        return response.content
+        response = await self.provider.generate_response(messages, temperature=0.85, max_tokens=220)
+        companion_name = "Juhi"
+        if conversation.companion_profile_id:
+            comp_stmt = select(CompanionProfile.display_name).where(
+                CompanionProfile.id == conversation.companion_profile_id
+            )
+            comp_res = await db.execute(comp_stmt)
+            name = comp_res.scalar_one_or_none()
+            if name:
+                companion_name = name
+        return self._clean_reply(response.content, companion_name)
 
     async def stream_turn(
         self,
@@ -197,6 +281,6 @@ class TurnOrchestrator:
         db: AsyncSession,
     ) -> AsyncGenerator[str, None]:
         messages = await self.compile_context(user, conversation, db)
-        async for chunk in self.provider.stream_response(messages):
+        async for chunk in self.provider.stream_response(messages, temperature=0.85, max_tokens=220):
             if chunk.delta:
                 yield chunk.delta
