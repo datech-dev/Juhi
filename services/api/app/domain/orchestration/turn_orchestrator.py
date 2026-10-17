@@ -203,7 +203,8 @@ class TurnOrchestrator:
                 "- You and the user are participating in an interactive storytelling/roleplay scenario.\n"
                 f"- Scenario Context: {scenario_prompt or 'Collaborative creative scenario'}\n"
                 f"- Character Role: {character_role or companion_name}\n"
-                "- Immerse naturally into the narrative setting while respecting comfort and safety boundaries.\n\n"
+                "- Immerse naturally into the narrative setting while respecting comfort and safety boundaries.\n"
+                f"- EXIT RULE: If the user indicates they want to exit, pause, or stop (e.g. 'exit roleplay', 'stop story', 'back to normal', or speaks out of character), immediately drop the roleplay persona, acknowledge warmly and affectionately as {companion_name}, and chat normally.\n\n"
             )
 
         # 4. Assemble system prompt with strict boundary delineation and authentic bestie texting cadence
