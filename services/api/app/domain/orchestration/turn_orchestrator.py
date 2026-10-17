@@ -61,7 +61,11 @@ class TurnOrchestrator:
             else "None recorded yet."
         )
 
-        persona_desc = persona.description if persona and persona.description else "Warm, empathetic, and culturally fluent AI companion."
+        persona_desc = (
+            persona.description
+            if persona and persona.description
+            else "Warm, empathetic, and culturally fluent AI companion."
+        )
 
         # 3. Assemble system prompt
         system_content = (

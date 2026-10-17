@@ -48,11 +48,14 @@ class Settings(BaseSettings):
     RATE_LIMIT_PER_MINUTE: int = 60
 
     # AI Model Providers
-    AI_PROVIDER: str = "mock"  # mock, openai, anthropic, venice
-    AI_MODEL: str = "mock-companion-v1"
+    # Primary: venice (privacy-first open models e.g. llama-3.3-70b)
+    # Options: 'venice', 'mock', 'openai', 'anthropic'
+    AI_PROVIDER: str = "venice"
+    AI_MODEL: str = "llama-3.3-70b"
+    VENICE_BASE_URL: str = "https://api.venice.ai/api/v1"
+    VENICE_API_KEY: str | None = None
     OPENAI_API_KEY: str | None = None
     ANTHROPIC_API_KEY: str | None = None
-    VENICE_API_KEY: str | None = None
 
 
 settings = Settings()

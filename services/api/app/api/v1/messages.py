@@ -2,17 +2,18 @@ import json
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.authorization import get_current_active_user, verify_conversation_access
+from app.domain.memory.extractor import MemoryExtractor
 from app.domain.models.conversation import Conversation, Message
 from app.domain.models.memory import MemoryItem
 from app.domain.models.user import User
 from app.domain.orchestration.turn_orchestrator import TurnOrchestrator
-from app.infrastructure.database.session import get_db
+from app.infrastructure.database.session import AsyncSessionLocal, get_db
 from app.schemas.conversation import (
     ChatTurnResponse,
     MessageResponse,
@@ -20,6 +21,25 @@ from app.schemas.conversation import (
 )
 
 router = APIRouter(prefix="/conversations/{conversation_id}/messages", tags=["Messages & Chat"])
+
+
+async def _extract_memories_task(
+    user_id: uuid.UUID,
+    conversation_id: uuid.UUID,
+    message_id: uuid.UUID,
+    user_text: str,
+    assistant_text: str,
+):
+    async with AsyncSessionLocal() as session:
+        extractor = MemoryExtractor()
+        await extractor.extract_and_persist(
+            user_id,
+            conversation_id,
+            message_id,
+            user_text,
+            assistant_text,
+            session,
+        )
 
 
 @router.get("", response_model=list[MessageResponse])
@@ -44,6 +64,7 @@ async def list_messages(
 @router.post("", response_model=ChatTurnResponse)
 async def send_message(
     data: SendMessageRequest,
+    background_tasks: BackgroundTasks,
     conversation: Conversation = Depends(verify_conversation_access),
     user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -160,6 +181,16 @@ async def send_message(
     await db.commit()
     await db.refresh(user_msg)
     await db.refresh(assistant_msg)
+
+    # 6. Enqueue LLM-powered deep memory extraction in background
+    background_tasks.add_task(
+        _extract_memories_task,
+        user.id,
+        locked_conv.id,
+        user_msg.id,
+        data.text,
+        assistant_text,
+    )
 
     return ChatTurnResponse(
         user_message=MessageResponse.model_validate(user_msg),
