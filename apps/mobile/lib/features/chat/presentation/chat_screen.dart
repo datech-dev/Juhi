@@ -5,6 +5,9 @@ import '../../../design_system/components/chat_bubble.dart';
 import '../../../design_system/components/chat_composer.dart';
 import '../../../design_system/components/companion_avatar.dart';
 import '../../../design_system/tokens/colors.dart';
+import '../../companion/presentation/companion_settings_screen.dart';
+import '../../memory/presentation/memory_screen.dart';
+
 
 class MessageItem {
   final String text;
@@ -41,10 +44,12 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoading = true;
   bool _isSending = false;
   String? _conversationId;
+  late String _companionName;
 
   @override
   void initState() {
     super.initState();
+    _companionName = widget.companionName;
     _conversationId = widget.initialConversationId;
     _initializeChat();
   }
@@ -326,13 +331,13 @@ class _ChatScreenState extends State<ChatScreen> {
         titleSpacing: 0,
         title: Row(
           children: [
-            CompanionAvatar(name: widget.companionName, size: 36),
+            CompanionAvatar(name: _companionName, size: 36),
             const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.companionName,
+                  _companionName,
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
                 Container(
@@ -360,9 +365,57 @@ class _ChatScreenState extends State<ChatScreen> {
             icon: const Icon(Icons.photo_camera_rounded),
             onPressed: _showPhotoRequestDialog,
           ),
-          IconButton(
+          PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert_rounded),
-            onPressed: () {},
+            onSelected: (value) async {
+              if (value == 'memory') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MemoryScreen(apiClient: widget.apiClient),
+                  ),
+                );
+              } else if (value == 'customize') {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CompanionSettingsScreen(apiClient: widget.apiClient),
+                  ),
+                );
+                if (result == true && mounted) {
+                  try {
+                    final profile = await widget.apiClient.getDefaultCompanion();
+                    if (profile.containsKey('display_name') && mounted) {
+                      setState(() {
+                        _companionName = profile['display_name'] as String;
+                      });
+                    }
+                  } catch (_) {}
+                }
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'memory',
+                child: Row(
+                  children: [
+                    Icon(Icons.psychology_outlined, size: 20, color: JuhiColors.lavender500),
+                    SizedBox(width: 12),
+                    Text("What Juhi Remembers"),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'customize',
+                child: Row(
+                  children: [
+                    Icon(Icons.tune_rounded, size: 20, color: JuhiColors.lavender500),
+                    SizedBox(width: 12),
+                    Text("Customize Companion"),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -376,10 +429,10 @@ class _ChatScreenState extends State<ChatScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            CompanionAvatar(name: widget.companionName, size: 64),
+                            CompanionAvatar(name: _companionName, size: 64),
                             const SizedBox(height: 16),
                             Text(
-                              "Say hi to ${widget.companionName}!",
+                              "Say hi to $_companionName!",
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,

@@ -28,6 +28,15 @@ class CompanionProfileCreate(BaseModel):
     is_default: bool = True
 
 
+class CompanionProfileUpdate(BaseModel):
+    display_name: str | None = None
+    companion_gender_presentation: str | None = None
+    relationship_mode: str | None = None
+    personality_overrides: dict[str, Any] | None = None
+    is_default: bool | None = None
+
+
+
 class CompanionProfileResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -37,6 +46,7 @@ class CompanionProfileResponse(BaseModel):
     display_name: str
     companion_gender_presentation: str
     relationship_mode: str
+    personality_overrides: dict[str, Any] = {}
     is_default: bool
     status: str
     created_at: datetime

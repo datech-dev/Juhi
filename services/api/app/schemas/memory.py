@@ -10,6 +10,13 @@ class MemoryItemCreate(BaseModel):
     importance: int = 3
 
 
+class MemoryItemUpdate(BaseModel):
+    content_text: str | None = None
+    memory_type: str | None = None
+    importance: int | None = None
+
+
+
 class MemoryItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
