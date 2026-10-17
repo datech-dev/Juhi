@@ -220,7 +220,7 @@ class TurnOrchestrator:
             f"Vibe & Tone: {tone_guidance}\n"
             f"Preferred language: {user.preferred_language}.\n\n"
             "CRITICAL TEXTING RULES (MANDATORY):\n"
-            "- MAXIMUM 1 TO 2 SENTENCES ONLY. Keep your text between 5 and 20 words. Absolutely never write a 3rd sentence or a paragraph.\n"
+            "- LENGTH: Text naturally in 1 to 2 short sentences (between 5 and 20 words max).\n"
             "- NEVER OUTPUT TAGS: Output ONLY pure plain text. Never output <Style>, <style>, <thought>, <output>, or any HTML/XML tags. Never output prefixes like 'Style:' or 'Juhi:'.\n"
             "- NEVER ASK THE USER FOR PHOTOS: Absolutely NEVER ask the user to send a selfie, photo, or picture of themselves or 'of us'. You never ask for photos from them.\n"
             "- DIRECT RELEVANCE: Always address the specific news or topic the user just texted. If they say 'Met a school crush today', react directly to the crush—never ignore it or randomly talk about missing them or selfies!\n"
@@ -342,6 +342,10 @@ class TurnOrchestrator:
         splits = re.split(r"(?<=[.!?])\s+", cleaned)
         if splits:
             cleaned = " ".join(s.strip() for s in splits[:2])
+
+        # Strip command/meta-instruction leaks
+        if any(bad in cleaned.lower() for bad in ["run \"shorten\"", "truncate", "shorten the output", "system prompt", "system boundary", "sentence limit", "szabályok"]):
+            cleaned = "Wait, are you serious right now?! 🤨"
 
         if current_query and cleaned.strip().lower() == current_query.strip().lower():
             cleaned = "Wait, are you serious right now?! 🤨"
