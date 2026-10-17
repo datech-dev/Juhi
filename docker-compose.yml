@@ -1,0 +1,44 @@
+services:
+  api:
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile
+    container_name: juhi-api-dev
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=development
+      - DEBUG=true
+      - DATABASE_URL=postgresql+asyncpg://juhi_dev:juhi_secret_dev@postgres:5432/juhi_dev
+      - SECRET_KEY=development_insecure_secret_key_minimum_32_chars_long_12345
+      - ALLOWED_ORIGINS=*
+      - ENABLE_DEV_AUTH_BYPASS=true
+      - AI_PROVIDER=mock
+    volumes:
+      - ./services/api/app:/app/app
+      - ./services/api/migrations:/app/migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: juhi-postgres-dev
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: juhi_dev
+      POSTGRES_PASSWORD: juhi_secret_dev
+      POSTGRES_DB: juhi_dev
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U juhi_dev -d juhi_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_dev_data:
