@@ -22,12 +22,11 @@ services:
 
   worker:
     build:
-      context: ./services/api
-      dockerfile: Dockerfile
-    image: ${API_IMAGE:-ghcr.io/datech-dev/juhi/juhi-api:latest}
+      context: .
+      dockerfile: services/worker/Dockerfile
+    image: ${WORKER_IMAGE:-ghcr.io/datech-dev/juhi/juhi-worker:latest}
     container_name: juhi-worker-prod
     restart: unless-stopped
-    command: ["python", "-m", "app.workers.image_worker"]
     env_file:
       - .env.production
     depends_on:
