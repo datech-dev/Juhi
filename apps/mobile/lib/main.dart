@@ -7,7 +7,10 @@ void main() {
 
   // Initialize API client with dev mock token by default
   final apiClient = JuhiApiClient(
-    baseUrl: "http://localhost:8000/api/v1",
+    baseUrl: const String.fromEnvironment(
+      'API_BASE_URL',
+      defaultValue: "https://juhi.zetalink.cloud/api/v1",
+    ),
     initialToken: "test-user-mobile-client",
   );
 

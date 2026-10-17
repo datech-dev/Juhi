@@ -7,7 +7,10 @@ class JuhiApiClient {
   String? _authToken;
 
   JuhiApiClient({
-    this.baseUrl = "http://localhost:8000/api/v1",
+    this.baseUrl = const String.fromEnvironment(
+      'API_BASE_URL',
+      defaultValue: "https://juhi.zetalink.cloud/api/v1",
+    ),
     String? initialToken,
   }) : _authToken = initialToken;
 
