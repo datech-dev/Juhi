@@ -105,3 +105,50 @@ async def test_multilingual_chat_tanglish(client: AsyncClient, auth_headers_user
     assert send_res.status_code == 200
     assist_text = send_res.json()["assistant_message"]["content_json"]["parts"][0]["text"]
     assert "vanakkam" in assist_text.lower() or "nalla" in assist_text.lower()
+
+
+def test_clean_reply_strips_style_tags_and_prefixes():
+    from app.domain.orchestration.turn_orchestrator import TurnOrchestrator
+
+    # 1. Test <Style> tag stripping
+    raw_reply = "<Style>\nOmg you're so cute! 😭 Let me see your face!"
+    cleaned = TurnOrchestrator._clean_reply(raw_reply, "Juhi")
+    assert "<Style>" not in cleaned
+    assert "<style>" not in cleaned.lower()
+    assert "cute" in cleaned
+
+    # 2. Test meta-commentary prefix stripping
+    meta_reply = 'Here is my sweet response:\n"Wait, who is she?? 🤨 You better not be flirting without me!"'
+    cleaned = TurnOrchestrator._clean_reply(meta_reply, "Juhi")
+    assert "Here is" not in cleaned
+    assert "Wait, who is she" in cleaned
+
+    # 3. Test character prefix stripping
+    prefixed = "Juhi: Of course I do, you're mine! 😤 Tell me rn!"
+    cleaned = TurnOrchestrator._clean_reply(prefixed, "Juhi")
+    assert not cleaned.startswith("Juhi:")
+    assert "mine" in cleaned
+
+
+@pytest.mark.asyncio
+async def test_selfie_request_handling(client: AsyncClient, auth_headers_user1: dict):
+    await client.post("/api/v1/auth/sync", headers=auth_headers_user1)
+
+    create_conv_res = await client.post(
+        "/api/v1/conversations",
+        json={"title": "Selfie Chat"},
+        headers=auth_headers_user1,
+    )
+    conv_id = create_conv_res.json()["id"]
+
+    send_res = await client.post(
+        f"/api/v1/conversations/{conv_id}/messages",
+        json={"text": "Send me your selfie", "idempotency_key": str(uuid.uuid4())},
+        headers=auth_headers_user1,
+    )
+    assert send_res.status_code == 200
+    parts = send_res.json()["assistant_message"]["content_json"]["parts"]
+    assert len(parts) >= 1
+    # Check that it either attaches an image or responds with a photo caption / request
+    assert "selfie" in parts[0]["text"].lower() or "pic" in parts[0]["text"].lower() or len(parts) > 1
+

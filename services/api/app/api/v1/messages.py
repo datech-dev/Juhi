@@ -1,4 +1,5 @@
 import json
+import re
 import uuid
 from datetime import datetime
 
@@ -126,7 +127,74 @@ async def send_message(
 
     # 4. Generate AI Assistant Turn
     orchestrator = TurnOrchestrator()
-    assistant_text = await orchestrator.generate_turn(user, locked_conv, db)
+    assistant_text = await orchestrator.generate_turn(user, locked_conv, db, current_query=data.text)
+
+    # Check if user requested a selfie or photo
+    t_clean = re.sub(r"[^\w\s]", "", data.text.lower().strip())
+    selfie_phrases = [
+        "send me your selfie",
+        "send your selfie",
+        "send me a selfie",
+        "send selfie",
+        "you send me",
+        "send me your pic",
+        "send me your photo",
+        "send your photo",
+        "send your pic",
+        "send me a pic",
+        "send me a photo",
+        "show me your face",
+        "photo kudu",
+        "photo anupu",
+        "un photo kudu",
+        "un photo anupu",
+        "apna photo bhejo",
+        "apni selfie bhejo",
+        "selfie bhejo",
+        "photo bhejo",
+    ]
+    is_selfie = any(phrase in t_clean for phrase in selfie_phrases)
+
+    assistant_parts: list[dict] = [{"type": "text", "text": assistant_text}]
+    if is_selfie:
+        try:
+            from app.domain.media.service import MediaService
+            from app.domain.models.billing import CreditAccount
+            from app.domain.models.media import MediaAsset
+
+            acct_stmt = select(CreditAccount).where(CreditAccount.user_id == user.id)
+            acct_res = await db.execute(acct_stmt)
+            acct = acct_res.scalar_one_or_none()
+            if acct and acct.available_balance >= 10:
+                media_svc = MediaService()
+                selfie_prompt = (
+                    "Cute close-up phone selfie portrait of young Indian woman Juhi, "
+                    "warm friendly smile, natural lighting, casual cozy indoor setting, photorealistic, high quality"
+                )
+                idemp_job = f"selfie_{user_msg.id}"
+                job = await media_svc.request_image_generation(
+                    user_id=user.id,
+                    prompt=selfie_prompt,
+                    idempotency_key=idemp_job,
+                    conversation_id=locked_conv.id,
+                    db=db,
+                    width=768,
+                    height=1024,
+                )
+                executed_job = await media_svc.execute_job(job.id, db=db)
+                if executed_job.status == "succeeded" and executed_job.result_json:
+                    asset_id = uuid.UUID(executed_job.result_json["asset_id"])
+                    asset_stmt = select(MediaAsset).where(MediaAsset.id == asset_id)
+                    asset_res = await db.execute(asset_stmt)
+                    asset = asset_res.scalar_one_or_none()
+                    if asset and asset.metadata_json and "b64_preview" in asset.metadata_json:
+                        assistant_parts.append({
+                            "type": "image",
+                            "b64_image": asset.metadata_json["b64_preview"],
+                        })
+                        assistant_parts[0]["text"] = "Here's a cute selfie I just took for you! 📸 Hope you love it 💕"
+        except Exception:
+            pass
 
     assistant_seq = locked_conv.next_sequence_no
     locked_conv.next_sequence_no += 1
@@ -134,7 +202,7 @@ async def send_message(
 
     assistant_content = {
         "schema_version": 1,
-        "parts": [{"type": "text", "text": assistant_text}],
+        "parts": assistant_parts,
     }
     assistant_idempotency = f"assist_{user_msg.id}"
     assistant_msg = Message(

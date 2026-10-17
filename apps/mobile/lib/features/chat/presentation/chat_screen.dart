@@ -83,11 +83,14 @@ class _ChatScreenState extends State<ChatScreen> {
         final isUser = role == 'user';
         final content = m['content_json'] as Map<String, dynamic>;
         String text = "";
+        String? imageBase64;
         if (content.containsKey('parts')) {
           final parts = content['parts'] as List;
           for (final p in parts) {
             if (p['type'] == 'text') {
               text += p['text'] as String;
+            } else if (p['type'] == 'image') {
+              imageBase64 = p['b64_image'] as String? ?? p['data'] as String?;
             }
           }
         }
@@ -96,6 +99,7 @@ class _ChatScreenState extends State<ChatScreen> {
           text: text,
           isUser: isUser,
           time: "",
+          imageBase64: imageBase64,
         ));
       }
 
@@ -137,9 +141,13 @@ class _ChatScreenState extends State<ChatScreen> {
       final assistContent =
           assistMsg['content_json'] as Map<String, dynamic>? ?? {};
       String replyText = "";
+      String? imageBase64;
       if (assistContent.containsKey('parts')) {
         for (final p in assistContent['parts'] as List) {
           if (p['type'] == 'text') replyText += p['text'] as String;
+          if (p['type'] == 'image') {
+            imageBase64 = p['b64_image'] as String? ?? p['data'] as String?;
+          }
         }
       }
 
@@ -149,6 +157,7 @@ class _ChatScreenState extends State<ChatScreen> {
           text: replyText,
           isUser: false,
           time: "Just now",
+          imageBase64: imageBase64,
         ));
         _isSending = false;
       });
