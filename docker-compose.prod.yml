@@ -32,6 +32,17 @@ services:
       retries: 3
       start_period: 10s
 
+  worker:
+    image: ${API_IMAGE:-juhi-api:latest}
+    container_name: juhi-worker-prod
+    restart: unless-stopped
+    command: ["python", "-m", "app.workers.image_worker"]
+    env_file:
+      - .env.production
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   postgres:
     image: pgvector/pgvector:pg16
     container_name: juhi-postgres-prod

@@ -22,6 +22,25 @@ services:
       postgres:
         condition: service_healthy
 
+  worker:
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile
+    container_name: juhi-worker-dev
+    restart: unless-stopped
+    command: ["python", "-m", "app.workers.image_worker"]
+    environment:
+      - APP_ENV=development
+      - DEBUG=true
+      - DATABASE_URL=postgresql+asyncpg://juhi_dev:juhi_secret_dev@postgres:5432/juhi_dev
+      - SECRET_KEY=development_insecure_secret_key_minimum_32_chars_long_12345
+      - AI_PROVIDER=mock
+    volumes:
+      - ./services/api/app:/app/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   postgres:
     image: pgvector/pgvector:pg16
     container_name: juhi-postgres-dev

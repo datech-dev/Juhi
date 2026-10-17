@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.api.v1.audio import router as audio_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.billing import router as billing_router
 from app.api.v1.companions import router as companions_router
@@ -20,5 +21,6 @@ api_router.include_router(conversations_router)
 api_router.include_router(messages_router)
 api_router.include_router(memory_router)
 api_router.include_router(media_router)
+api_router.include_router(audio_router)
 
 

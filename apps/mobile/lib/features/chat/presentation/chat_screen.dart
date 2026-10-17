@@ -13,16 +13,24 @@ import '../../story/presentation/story_picker_sheet.dart';
 
 
 class MessageItem {
+  final String? id;
   final String text;
   final bool isUser;
   final String time;
   final String? imageBase64;
+  String? audioBase64;
+  double? durationSeconds;
+  bool isSpeaking;
 
   MessageItem({
+    this.id,
     required this.text,
     required this.isUser,
     required this.time,
     this.imageBase64,
+    this.audioBase64,
+    this.durationSeconds,
+    this.isSpeaking = false,
   });
 }
 
@@ -70,6 +78,7 @@ class _ChatScreenState extends State<ChatScreen> {
       final loadedMessages = <MessageItem>[];
 
       for (final m in messagesData) {
+        final id = m['id'] as String?;
         final role = m['role'] as String;
         final isUser = role == 'user';
         final content = m['content_json'] as Map<String, dynamic>;
@@ -83,6 +92,7 @@ class _ChatScreenState extends State<ChatScreen> {
           }
         }
         loadedMessages.add(MessageItem(
+          id: id,
           text: text,
           isUser: isUser,
           time: "",
@@ -122,8 +132,10 @@ class _ChatScreenState extends State<ChatScreen> {
         idempotencyKey: idempotencyKey,
       );
 
+      final assistMsg = turn['assistant_message'] as Map<String, dynamic>? ?? {};
+      final assistId = assistMsg['id'] as String?;
       final assistContent =
-          turn['assistant_message']['content_json'] as Map<String, dynamic>;
+          assistMsg['content_json'] as Map<String, dynamic>? ?? {};
       String replyText = "";
       if (assistContent.containsKey('parts')) {
         for (final p in assistContent['parts'] as List) {
@@ -133,6 +145,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
       setState(() {
         _messages.add(MessageItem(
+          id: assistId,
           text: replyText,
           isUser: false,
           time: "Just now",
@@ -146,6 +159,48 @@ class _ChatScreenState extends State<ChatScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to send: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _speakMessage(int index) async {
+    final msg = _messages[index];
+    if (msg.isSpeaking) return;
+    if (msg.audioBase64 != null) return;
+
+    setState(() {
+      msg.isSpeaking = true;
+    });
+
+    try {
+      if (msg.id != null && _conversationId != null) {
+        final res = await widget.apiClient.speakMessage(
+          conversationId: _conversationId!,
+          messageId: msg.id!,
+        );
+        setState(() {
+          msg.audioBase64 = res['b64_audio'] as String?;
+          msg.durationSeconds = (res['duration_seconds'] as num?)?.toDouble() ?? 3.0;
+          msg.isSpeaking = false;
+        });
+      } else {
+        final res = await widget.apiClient.synthesizeSpeech(
+          text: msg.text,
+        );
+        setState(() {
+          msg.audioBase64 = res['b64_audio'] as String?;
+          msg.durationSeconds = (res['duration_seconds'] as num?)?.toDouble() ?? 3.0;
+          msg.isSpeaking = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        msg.isSpeaking = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Speech synthesis failed: $e')),
         );
       }
     }
@@ -517,7 +572,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           ],
                         ),
                       )
-                    : ListView.builder(
+                      : ListView.builder(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         itemCount: _messages.length,
                         itemBuilder: (context, index) {
@@ -527,6 +582,10 @@ class _ChatScreenState extends State<ChatScreen> {
                             isUser: msg.isUser,
                             time: msg.time,
                             imageBase64: msg.imageBase64,
+                            audioBase64: msg.audioBase64,
+                            durationSeconds: msg.durationSeconds,
+                            isSpeaking: msg.isSpeaking,
+                            onSpeakTap: !msg.isUser ? () => _speakMessage(index) : null,
                           );
                         },
                       ),

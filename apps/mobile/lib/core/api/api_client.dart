@@ -269,6 +269,40 @@ class JuhiApiClient {
     return _handleResponse(response);
   }
 
+  Future<Map<String, dynamic>> synthesizeSpeech({
+    required String text,
+    String voiceId = 'juhi-warm',
+    double speed = 1.0,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/audio/speak'),
+      headers: _buildHeaders(),
+      body: jsonEncode({
+        'text': text,
+        'voice_id': voiceId,
+        'speed': speed,
+      }),
+    );
+    return _handleResponse(response);
+  }
+
+  Future<Map<String, dynamic>> speakMessage({
+    required String conversationId,
+    required String messageId,
+    String voiceId = 'juhi-warm',
+    double speed = 1.0,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/audio/conversations/$conversationId/messages/$messageId/speak'),
+      headers: _buildHeaders(),
+      body: jsonEncode({
+        'voice_id': voiceId,
+        'speed': speed,
+      }),
+    );
+    return _handleResponse(response);
+  }
+
   dynamic _handleResponse(http.Response response) {
     final dynamic decoded = jsonDecode(utf8.decode(response.bodyBytes));
     if (response.statusCode >= 200 && response.statusCode < 300) {

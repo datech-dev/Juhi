@@ -3,11 +3,17 @@ import 'package:flutter/material.dart';
 import '../tokens/colors.dart';
 import '../tokens/spacing.dart';
 
+import 'audio_player.dart';
+
 class ChatBubble extends StatelessWidget {
   final String text;
   final bool isUser;
   final String? time;
   final String? imageBase64;
+  final String? audioBase64;
+  final double? durationSeconds;
+  final VoidCallback? onSpeakTap;
+  final bool isSpeaking;
 
   const ChatBubble({
     super.key,
@@ -15,6 +21,10 @@ class ChatBubble extends StatelessWidget {
     required this.isUser,
     this.time,
     this.imageBase64,
+    this.audioBase64,
+    this.durationSeconds,
+    this.onSpeakTap,
+    this.isSpeaking = false,
   });
 
   @override
@@ -81,6 +91,14 @@ class ChatBubble extends StatelessWidget {
               ),
               if (text.isNotEmpty) const SizedBox(height: 8),
             ],
+            if (audioBase64 != null) ...[
+              AudioMessagePlayer(
+                audioBase64: audioBase64,
+                durationSeconds: durationSeconds ?? 3.0,
+                isUser: isUser,
+              ),
+              if (text.isNotEmpty) const SizedBox(height: 6),
+            ],
             if (text.isNotEmpty)
               Text(
                 text,
@@ -90,18 +108,47 @@ class ChatBubble extends StatelessWidget {
                   height: 1.4,
                 ),
               ),
-            if (time != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                time!,
-                style: TextStyle(
-                  color: isUser
-                      ? Colors.white.withValues(alpha: 0.7)
-                      : (isDark ? JuhiColors.textDarkMuted : JuhiColors.textLightMuted),
-                  fontSize: 11.0,
-                ),
-              ),
-            ],
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (time != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      time!,
+                      style: TextStyle(
+                        color: isUser
+                            ? Colors.white.withValues(alpha: 0.7)
+                            : (isDark ? JuhiColors.textDarkMuted : JuhiColors.textLightMuted),
+                        fontSize: 11.0,
+                      ),
+                    ),
+                  ),
+                if (!isUser && audioBase64 == null && (onSpeakTap != null || isSpeaking)) ...[
+                  const SizedBox(width: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: GestureDetector(
+                      onTap: isSpeaking ? null : onSpeakTap,
+                      child: isSpeaking
+                          ? const SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.5,
+                                color: JuhiColors.lavender500,
+                              ),
+                            )
+                          : Icon(
+                              Icons.volume_up_rounded,
+                              size: 16,
+                              color: isDark ? JuhiColors.textDarkMuted : JuhiColors.textLightMuted,
+                            ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ],
         ),
       ),
