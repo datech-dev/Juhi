@@ -29,7 +29,7 @@ class VeniceLLMProvider(BaseLLMProvider):
     ):
         self.api_key = api_key or settings.VENICE_API_KEY
         self.base_url = (base_url or settings.VENICE_BASE_URL).rstrip("/")
-        self.model_name = model_name or settings.AI_MODEL
+        self.model_name = model_name or settings.VENICE_MODEL or settings.AI_MODEL
         self._custom_client = http_client
 
     def _get_headers(self) -> dict:

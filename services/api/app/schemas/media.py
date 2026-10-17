@@ -9,7 +9,7 @@ class ImageGenerateRequest(BaseModel):
     prompt: str = Field(min_length=3, max_length=1000)
     conversation_id: uuid.UUID | None = None
     idempotency_key: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    model: str = "fluently-xl"
+    model: str = "lustify-v7"
     width: int = 1024
     height: int = 1024
 

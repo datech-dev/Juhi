@@ -51,10 +51,12 @@ class Settings(BaseSettings):
     RATE_LIMIT_PER_MINUTE: int = 60
 
     # AI Model Providers
-    # Primary: venice (privacy-first open models e.g. llama-3.3-70b)
+    # Primary: venice (privacy-first open models)
     # Options: 'venice', 'mock', 'openai', 'anthropic'
     AI_PROVIDER: str = "venice"
-    AI_MODEL: str = "llama-3.3-70b"
+    AI_MODEL: str = "venice-uncensored-role-play"
+    VENICE_MODEL: str = "venice-uncensored-role-play"
+    VENICE_IMAGE_MODEL: str = "lustify-v7"
     VENICE_BASE_URL: str = "https://api.venice.ai/api/v1"
     VENICE_API_KEY: str | None = None
     OPENAI_API_KEY: str | None = None

@@ -17,12 +17,12 @@ class VeniceImageProvider(BaseImageProvider):
         self,
         api_key: str | None = None,
         base_url: str | None = None,
-        default_model: str = "fluently-xl",
+        default_model: str | None = None,
         http_client: httpx.AsyncClient | None = None,
     ):
         self.api_key = api_key or settings.VENICE_API_KEY
         self.base_url = (base_url or settings.VENICE_BASE_URL).rstrip("/")
-        self.default_model = default_model
+        self.default_model = default_model or settings.VENICE_IMAGE_MODEL or "lustify-v7"
         self._custom_client = http_client
 
     async def generate_image(

@@ -34,7 +34,7 @@ class MediaService:
         idempotency_key: str,
         conversation_id: uuid.UUID | None,
         db: AsyncSession,
-        model: str = "fluently-xl",
+        model: str = "lustify-v7",
         width: int = 1024,
         height: int = 1024,
     ) -> GenerationJob:
@@ -146,7 +146,7 @@ class MediaService:
         prompt = cfg.get("prompt", "Portrait of Juhi")
         width = cfg.get("width", 1024)
         height = cfg.get("height", 1024)
-        model = cfg.get("model", "fluently-xl")
+        model = cfg.get("model", "lustify-v7")
 
         try:
             result = await self.image_provider.generate_image(
