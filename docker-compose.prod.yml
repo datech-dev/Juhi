@@ -1,25 +1,13 @@
 services:
-  caddy:
-    image: caddy:2-alpine
-    container_name: juhi-caddy-prod
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      api:
-        condition: service_healthy
-
   api:
-    image: ${API_IMAGE:-juhi-api:latest}
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile
+    image: ${API_IMAGE:-ghcr.io/datech-dev/juhi/juhi-api:latest}
     container_name: juhi-api-prod
     restart: unless-stopped
-    expose:
-      - "8000"
+    ports:
+      - "${API_PORT:-8090}:8000"
     env_file:
       - .env.production
     depends_on:
@@ -33,7 +21,10 @@ services:
       start_period: 10s
 
   worker:
-    image: ${API_IMAGE:-juhi-api:latest}
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile
+    image: ${API_IMAGE:-ghcr.io/datech-dev/juhi/juhi-api:latest}
     container_name: juhi-worker-prod
     restart: unless-stopped
     command: ["python", "-m", "app.workers.image_worker"]
@@ -48,18 +39,16 @@ services:
     container_name: juhi-postgres-prod
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:-juhi_prod}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-juhi_secret_prod}
+      POSTGRES_DB: ${POSTGRES_DB:-juhi_prod}
     volumes:
       - postgres_prod_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-juhi_prod} -d ${POSTGRES_DB:-juhi_prod}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
 volumes:
-  caddy_data:
-  caddy_config:
   postgres_prod_data:
