@@ -307,9 +307,9 @@ class TurnOrchestrator:
         # 2. Strip meta-commentary lines (e.g. 'Here is my sweet response...:' or 'Response:')
         cleaned = re.sub(r"^(?:Here is|Here\'s) (?:my |a )?[^:\n]+:\s*", "", cleaned, flags=re.IGNORECASE).strip()
 
-        # 3. Strip character/style prefixes like Juhi:, Style:, Assistant:
-        prefix_pattern = rf"^(?:\[?{re.escape(companion_name)}\]?|\[?Assistant\]?|\[?AI\]?|\[?Style\]?|Style)\s*:\s*"
-        cleaned = re.sub(prefix_pattern, "", cleaned, flags=re.IGNORECASE).strip()
+        # 3. Strip character/style prefixes like Juhi:, Style:, Assistant:, or foreign name labels
+        prefix_pattern = rf"^(?:\[?[^:\n]{{1,25}}\]?)\s*:\s*"
+        cleaned = re.sub(prefix_pattern, "", cleaned).strip()
 
         if (cleaned.startswith('"') and cleaned.endswith('"')) or (cleaned.startswith("'") and cleaned.endswith("'")):
             cleaned = cleaned[1:-1].strip()
@@ -320,9 +320,9 @@ class TurnOrchestrator:
         if is_story_mode:
             return cleaned
 
-        # Strip trailing repetitive filler phrases like "tell me everything", "do tell", "i want every detail"
-        trailing_fillers = r"[\s,.-]*(?:tell me (?:everything|more|all about it|every \w+ detail)(?: about her)?|do tell|spill(?: the tea)?|don't leave me hanging|i want every \w+ detail)[!?. ]*$"
-        cleaned = re.sub(trailing_fillers, "", cleaned, flags=re.IGNORECASE).strip()
+        # Strip robotic filler phrases (e.g. "tell me everything", "do tell", "i want every detail") anywhere
+        filler_pattern = r"\b(?:tell me (?:everything|more|all about it|every \w+ detail)(?: about her)?|do tell|spill(?: the tea)?|don't leave me hanging|i want every \w+ detail)[!?. ]*"
+        cleaned = re.sub(filler_pattern, "", cleaned, flags=re.IGNORECASE).strip()
 
         # Strip robotic therapist & customer-support trailing clichés
         cliches = [
@@ -342,6 +342,9 @@ class TurnOrchestrator:
         splits = re.split(r"(?<=[.!?])\s+", cleaned)
         if splits:
             cleaned = " ".join(s.strip() for s in splits[:2])
+
+        # Strip filler pattern again in case split exposed trailing fragment
+        cleaned = re.sub(filler_pattern, "", cleaned, flags=re.IGNORECASE).strip()
 
         # Strip command/meta-instruction leaks
         if any(bad in cleaned.lower() for bad in ["run \"shorten\"", "truncate", "shorten the output", "system prompt", "system boundary", "sentence limit", "szabályok"]):
